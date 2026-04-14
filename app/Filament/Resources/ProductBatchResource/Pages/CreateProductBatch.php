@@ -1,0 +1,16 @@
+<?php
+
+namespace App\Filament\Resources\ProductBatchResource\Pages;
+
+use App\Filament\Resources\ProductBatchResource;
+use Filament\Resources\Pages\CreateRecord;
+
+class CreateProductBatch extends CreateRecord
+{
+    protected static string $resource = ProductBatchResource::class;
+
+    protected function getRedirectUrl(): string
+    {
+        return $this->getResource()::getUrl('index');
+    }
+}
