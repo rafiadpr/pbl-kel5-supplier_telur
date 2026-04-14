@@ -2,31 +2,27 @@
 
 namespace App\Filament\Resources;
 
-use App\Filament\Resources\ProductBatchResource\Pages;
+use App\Filament\Resources\ProductResource\Pages;
 use App\Filament\Traits\InteractsWithCustomerAuth;
 use App\Models\Product;
-use App\Models\ProductBatch;
 use Filament\Actions;
 use Filament\Forms\Components as FormComponents;
 use Filament\Resources\Resource;
 use Filament\Schemas\Components\Section;
-use Filament\Schemas\Components\Utilities\Get;
-use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Schema;
 use Filament\Tables;
 use Filament\Tables\Table;
 
-class ProductBatchResource extends Resource
+class ProductResource extends Resource
 {
     use InteractsWithCustomerAuth;
 
-    protected static bool $shouldRegisterNavigation = false;
-    protected static ?string $model = ProductBatch::class;
-    protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-archive-box-arrow-down';
+    protected static ?string $model = Product::class;
+    protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-cube';
     protected static string|\UnitEnum|null $navigationGroup = 'Inventory';
-    protected static ?string $navigationLabel = 'Stok Masuk (Batch)';
-    protected static ?string $modelLabel = 'Batch Stok';
-    protected static ?string $pluralModelLabel = 'Batch Stok';
+    protected static ?string $navigationLabel = 'Produk';
+    protected static ?string $modelLabel = 'Produk';
+    protected static ?string $pluralModelLabel = 'Produk';
 
     public static function canAccess(): bool
     {
@@ -36,65 +32,36 @@ class ProductBatchResource extends Resource
     public static function form(Schema $form): Schema
     {
         return $form->schema([
-            Section::make('Informasi Batch')->schema([
-                FormComponents\Select::make('product_id')
-                    ->label('Produk')
-                    ->relationship('product', 'name')
-                    ->searchable()
-                    ->preload()
-                    ->required()
-                    ->live()
-                    ->afterStateUpdated(function (Set $set, ?string $state) {
-                        if ($state) {
-                            $product = Product::find($state);
-                            if ($product) {
-                                $set('purchase_price', $product->hpp);
-                                $set('selling_price', $product->selling_price);
-                            }
-                        }
-                    }),
-                FormComponents\TextInput::make('batch_code')
-                    ->label('Kode Batch')
+            Section::make('Informasi Produk')->schema([
+                FormComponents\TextInput::make('code')
+                    ->label('Kode Produk')
                     ->required()
                     ->unique(ignoreRecord: true)
-                    ->default(fn () => 'BATCH-' . now()->format('Ymd') . '-' . strtoupper(substr(uniqid(), -4)))
-                    ->maxLength(100),
-                FormComponents\DatePicker::make('received_at')
-                    ->label('Tanggal Masuk')
-                    ->default(now())
+                    ->maxLength(50),
+                FormComponents\TextInput::make('name')
+                    ->label('Nama Produk')
+                    ->required()
+                    ->maxLength(255),
+                FormComponents\Textarea::make('description')
+                    ->label('Deskripsi')
+                    ->rows(3),
+                FormComponents\TextInput::make('unit')
+                    ->label('Satuan')
+                    ->default('kg')
                     ->required(),
-            ])->columns(3),
-
-            Section::make('Jumlah Stok')->schema([
-                FormComponents\TextInput::make('quantity_initial')
-                    ->label('Jumlah Masuk')
-                    ->numeric()
-                    ->required()
-                    ->live(onBlur: true)
-                    ->afterStateUpdated(function (Set $set, Get $get, ?string $state) {
-                        if (!$get('id')) {
-                            $set('quantity_remaining', $state);
-                        }
-                    }),
-                FormComponents\TextInput::make('quantity_remaining')
-                    ->label('Sisa Stok')
-                    ->numeric()
-                    ->required()
-                    ->disabled(fn (Get $get) => !$get('id'))
-                    ->dehydrated(),
             ])->columns(2),
 
             Section::make('Harga')->schema([
-                FormComponents\TextInput::make('purchase_price')
-                    ->label('Harga Beli (HPP)')
+                FormComponents\TextInput::make('hpp')
+                    ->label('HPP (Harga Pokok)')
                     ->numeric()
                     ->prefix('Rp')
-                    ->required(),
+                    ->default(0),
                 FormComponents\TextInput::make('selling_price')
                     ->label('Harga Jual')
                     ->numeric()
                     ->prefix('Rp')
-                    ->required(),
+                    ->default(0),
                 FormComponents\Toggle::make('is_active')
                     ->label('Aktif')
                     ->default(true),
@@ -106,43 +73,32 @@ class ProductBatchResource extends Resource
     {
         return $table
             ->columns([
-                Tables\Columns\TextColumn::make('batch_code')
-                    ->label('Kode Batch')
+                Tables\Columns\TextColumn::make('code')
+                    ->label('Kode')
                     ->searchable()
                     ->sortable(),
-                Tables\Columns\TextColumn::make('product.name')
-                    ->label('Produk')
+                Tables\Columns\TextColumn::make('name')
+                    ->label('Nama Produk')
                     ->searchable()
                     ->sortable(),
-                Tables\Columns\TextColumn::make('received_at')
-                    ->label('Tanggal Masuk')
-                    ->date('d/m/Y')
-                    ->sortable(),
-                Tables\Columns\TextColumn::make('quantity_initial')
-                    ->label('Qty Awal')
-                    ->alignCenter(),
-                Tables\Columns\TextColumn::make('quantity_remaining')
-                    ->label('Sisa')
-                    ->alignCenter()
-                    ->color(fn (int $state): string => $state <= 10 ? 'danger' : 'success')
-                    ->weight('bold'),
-                Tables\Columns\TextColumn::make('purchase_price')
-                    ->label('Harga Beli')
+                Tables\Columns\TextColumn::make('unit')
+                    ->label('Satuan'),
+                Tables\Columns\TextColumn::make('hpp')
+                    ->label('HPP')
                     ->money('IDR')
                     ->sortable(),
                 Tables\Columns\TextColumn::make('selling_price')
                     ->label('Harga Jual')
                     ->money('IDR')
                     ->sortable(),
+                Tables\Columns\TextColumn::make('total_stock')
+                    ->label('Total Stok')
+                    ->getStateUsing(fn(Product $record) => number_format($record->total_stock, 2) . ' ' . $record->unit),
                 Tables\Columns\IconColumn::make('is_active')
                     ->label('Aktif')
                     ->boolean(),
             ])
-            ->defaultSort('received_at', 'desc')
             ->filters([
-                Tables\Filters\SelectFilter::make('product_id')
-                    ->label('Produk')
-                    ->relationship('product', 'name'),
                 Tables\Filters\TernaryFilter::make('is_active')
                     ->label('Status Aktif'),
             ])
@@ -152,7 +108,6 @@ class ProductBatchResource extends Resource
             ])
             ->bulkActions([
                 Actions\BulkActionGroup::make([
-                    \pxlrbt\FilamentExcel\Actions\Tables\ExportBulkAction::make(),
                     Actions\DeleteBulkAction::make(),
                 ]),
             ]);
@@ -161,9 +116,9 @@ class ProductBatchResource extends Resource
     public static function getPages(): array
     {
         return [
-            'index' => Pages\ListProductBatches::route('/'),
-            'create' => Pages\CreateProductBatch::route('/create'),
-            'edit' => Pages\EditProductBatch::route('/{record}/edit'),
+            'index' => Pages\ListProducts::route('/'),
+            'create' => Pages\CreateProduct::route('/create'),
+            'edit' => Pages\EditProduct::route('/{record}/edit'),
         ];
     }
 }
