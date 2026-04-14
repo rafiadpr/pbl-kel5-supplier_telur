@@ -72,7 +72,7 @@ class RecentOrders extends BaseWidget
             ->actions([
                 Action::make('view')
                     ->label('Lihat')
-                    ->url(fn(Order $record) => route('filament.admin.resources.orders.edit', $record))
+                    ->url(fn (Order $record) => \App\Filament\Resources\OrderResource::getUrl('edit', ['record' => $record]))
                     ->icon('heroicon-o-eye')
                     ->visible(fn() => static::isAdmin()),
             ])
