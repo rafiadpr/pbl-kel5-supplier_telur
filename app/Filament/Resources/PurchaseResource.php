@@ -3,6 +3,7 @@
 namespace App\Filament\Resources;
 
 use App\Filament\Resources\PurchaseResource\Pages;
+use App\Filament\Traits\InteractsWithCustomerAuth;
 use App\Models\FinancialAccount;
 use App\Models\Product;
 use App\Models\Purchase;
@@ -19,12 +20,20 @@ use Filament\Tables\Table;
 
 class PurchaseResource extends Resource
 {
+
+    use InteractsWithCustomerAuth;
+
     protected static ?string $model = Purchase::class;
     protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-shopping-bag';
     protected static string|\UnitEnum|null $navigationGroup = 'Inventory';
     protected static ?string $navigationLabel = 'Pembelian Stok';
     protected static ?string $modelLabel = 'Pembelian';
     protected static ?string $pluralModelLabel = 'Pembelian';
+
+    public static function canAccess(): bool
+    {
+        return static::isAdmin();
+    }
 
     public static function form(Schema $form): Schema
     {
